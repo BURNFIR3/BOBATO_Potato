@@ -1,6 +1,8 @@
-# 🏦 Bank of Baroda – Account Takeover (ATO) Detection System
+# 🛡️ Bank of Baroda — ATO Detection & Admin Operations Platform
 
-A **production-ready**, real-time fraud detection system that identifies and responds to account takeover attempts using ML (XGBoost), behavioral biometrics, and the ATLAS label-propagation architecture.
+A **production-grade, real-time Account Takeover (ATO) detection system** built for Bank of Baroda fraud operations teams. The platform monitors live transactions, scores them with a trained XGBoost behavioral model, and surfaces decisions to analysts through an admin dashboard — enabling instant intervention on suspicious accounts.
+
+> **Try it online →** Upload a transaction CSV on the [Hugging Face Space](https://huggingface.co/spaces/Burnfir3) to see ATO predictions without any setup.
 
 ---
 
@@ -8,160 +10,203 @@ A **production-ready**, real-time fraud detection system that identifies and res
 
 ```
 ato_detection/
-├── raw_data/                  ← DROP your raw CSV datasets here
-├── data/                      ← Processed datasets & blacklists
-├── models/                    ← Trained XGBoost model & baselines
-├── src/                       ← Core detection & ML pipeline
-├── api/                       ← FastAPI REST endpoints
-├── dashboard/                 ← Streamlit admin dashboard
-├── streaming/                 ← Kafka/Redis infrastructure
-├── scripts/                   ← One-click runner scripts
-├── tests/                     ← Pytest test suite
-├── logs/                      ← Auto-generated log files
-└── docs/                      ← Architecture & API documentation
+├── raw_data/          ← Drop your raw CSV datasets here
+├── data/              ← Processed datasets & blacklists
+├── models/            ← Trained XGBoost model & pipelines
+├── src/               ← Core detection & ML pipeline
+├── api/               ← FastAPI REST endpoints (port 8000)
+├── dashboard/         ← Streamlit admin dashboard (port 8501)
+├── streaming/         ← Kafka/Redis real-time infrastructure
+├── scripts/           ← One-click runner scripts
+├── tests/             ← Pytest test suite
+├── logs/              ← Auto-generated log files
+├── docs/              ← Architecture & API documentation
+└── hf_space/          ← Hugging Face Space (Gradio demo)
 ```
 
 ---
 
-## 🚀 Quick Start
+## 🚀 How to Run — Step by Step
 
-### 1. Install Dependencies
-```bash
+> **Prerequisites:** Python 3.10+, Git. Kafka/Redis are optional (needed only for live streaming).
+
+### Step 1 — Clone & Install
+
+```powershell
+git clone https://github.com/BURNFIR3/BOBATO_Potato.git
+cd BOBATO_Potato
+
+# Create virtual environment
+python -m venv .venv
+.venv\Scripts\Activate.ps1        # Windows
+# source .venv/bin/activate        # Mac/Linux
+
 pip install -r requirements.txt
 ```
 
-### 2. Drop Raw Dataset
-Place your raw CSV file(s) in the `raw_data/` folder.
+### Step 2 — Add Your Dataset
 
-### 3. Run the Pipeline
-```bash
-# Process raw dataset
-python scripts/process_dataset.py
+Place your raw transaction CSV in the `raw_data/` folder:
 
-# SMOTE augmentation (optional, for benchmarking)
-python scripts/augment_smote.py
-
-# Train model
-# For Production (recommended): uses raw data
-python scripts/train_model.py
-
-# OR for Benchmarking: uses SMOTE-augmented data
-python scripts/train_model.py --benchmark
-
-# Start API server (port 8000)
-python scripts/start_api.py
-
-# Start Kafka stream consumer (real-time fraud detection)
-python scripts/start_stream.py
-
-# Start dashboard (port 8501)
-python scripts/start_dashboard.py
-
-# Run all tests
-python scripts/run_tests.py
+```
+raw_data/
+└── your_transactions.csv    ← drop here
 ```
 
-### 4. Run a Live Kafka Demo
-```bash
-# Generate a separate SMOTE-balanced live dataset
-python scripts/generate_live_stream_dataset.py --rows 5000 --output data/ato_behavioral_live_stream_smote_50_50.csv
+> If `raw_data/` is empty the system auto-generates 5,000 synthetic records so you can still see the pipeline work.
 
-# Start the API server in one terminal
+### Step 3 — Process & Train
+
+```powershell
+# Process raw data → data/ato_dataset_processed.csv
+python scripts/process_dataset.py
+
+# Train the XGBoost model (~2–5 min)
+python scripts/train_model.py
+```
+
+### Step 4 — Start the API Server (Terminal 1)
+
+```powershell
 python scripts/start_api.py
+# → API running at http://localhost:8000
+# → Interactive docs at http://localhost:8000/docs
+```
 
-# Start the Kafka consumer in another terminal
+### Step 5 — Start the Admin Dashboard (Terminal 2)
+
+```powershell
+.venv\Scripts\python.exe -m streamlit run dashboard/app.py
+# → Dashboard at http://localhost:8501
+```
+
+### Step 6 — (Optional) Live Streaming with Kafka
+
+Requires Docker for Kafka + Redis:
+
+```powershell
+# Terminal 0 — start Kafka + Redis
+docker-compose up -d
+
+# Terminal 3 — start Kafka consumer
 python scripts/start_stream.py
 
-# Start the dashboard in another terminal
-python scripts/start_dashboard.py
-
-# Produce live transactions to Kafka with slight delays
-python scripts/kafka_live_producer.py --dataset data/ato_behavioral_live_stream_smote_50_50.csv --delay 0.25 --limit 500
-
-# Or use the bundled live demo helper
+# Terminal 4 — produce 500 live transactions
 python scripts/start_live_demo.py --delay 0.25 --limit 500
 ```
 
 ---
 
-## 🎯 Training Modes
+## 🎯 How Decisions Are Made
 
-### 📊 Production Mode (Recommended for Deployment)
-```bash
-python scripts/train_model.py
-```
-- Trains on **raw processed data** with real fraud ratio (~1-5%)
-- **Use for**: Real-time transaction streaming and fraud detection
-- Model handles realistic class imbalance
-- Better performance on actual production transactions
+Every incoming transaction is scored by the behavioral XGBoost pipeline and assigned an ATO probability. The admin dashboard shows the resulting action in real time:
 
-### 🏆 Benchmarking Mode (For Testing & Metrics)
-```bash
-python scripts/train_model.py --benchmark
-```
-- Trains on **SMOTE-augmented data** (40% fraud ratio)
-- **Use for**: Comparing algorithms, establishing baseline metrics
-- Balanced dataset provides equal weight to fraud/legitimate classes
-- Better for cross-validation studies and research
+| ATO Probability | Behavioral Signal | Action |
+|---|---|---|
+| < 0.50 | Low anomaly | ✅ **ALLOW** — transaction proceeds |
+| 0.50 – 0.80 | Moderate anomaly | ⚠️ **OTP REQUIRED** — step-up auth triggered |
+| > 0.80 | High anomaly | 🚨 **SUSPEND** — account frozen, OTP verify |
 
-**Note**: Once trained, the model file is identical. Only the training data differs. In production, streaming transactions are processed without any augmentation.
+When fraud is confirmed, three blacklists are automatically updated:
+- **IP address** of the session
+- **Device fingerprint** used
+- **Beneficiary account** targeted
 
 ---
 
-## 🎯 Detection Logic
+## 📊 Model Performance (Actual Results — June 2026)
 
-| ATO Probability | Behavioral Score | Action |
-|-----------------|------------------|--------|
-| < 0.50          | < 0.20           | ✅ ALLOW |
-| 0.50 – 0.80     | 0.20 – 0.30      | ⚠️ OTP_REQUIRED |
-| > 0.80          | > 0.30           | 🚨 SUSPEND + OTP_VERIFY |
+### Behavioral Model — Session & Biometric Features
+*Trained on 50,000 labeled sessions with 44 behavioral features*
 
-### Blacklisting (only if fraud confirmed)
-- IP address
-- Device ID
-- Beneficiary account
+| Metric | Result |
+|---|---|
+| AUC-ROC | **0.953** |
+| Fraud Precision | **99.1%** — when flagged, almost always real fraud |
+| Fraud Recall | **90.1%** — catches 9 in 10 actual ATO attempts |
+| False Positive Rate | **0.08%** — legitimate users almost never blocked |
+| Test Set | 10,000 sessions (20% holdout, unseen during training) |
 
----
+### Tabular Model — Transaction & Account Features
+*Trained on 1,055,000 real bank transactions, 1.5% fraud base rate*
 
-## 📊 Dataset Schema
+| Metric | Result |
+|---|---|
+| AUC-ROC | **0.913** |
+| Fraud Recall | **73.4%** — catches ~3 in 4 fraud cases |
+| False Positive Rate | **9.3%** — conservative, errs on side of caution |
+| Test Set | 211,000 transactions (20% holdout) |
 
-After processing, the dataset has **49 columns** including:
-- **16 tabular features**: IP, device, location, auth, transaction
-- **4 ATLAS features**: past session fraud rates
-- **13 behavioral features**: typing speed, phone angle, swipe speed, mouse path
+> The behavioral model is the **primary scoring engine**. The tabular model is used as a fallback when behavioral signals (mouse/keystroke/touch data) are unavailable.
 
 ---
 
 ## 🔧 API Endpoints
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/v1/detect-ato` | Detect ATO for a transaction |
-| POST | `/api/v1/verify-otp` | Verify OTP response |
-| GET | `/api/v1/ato-stats` | System statistics |
-| GET | `/api/v1/fraud-transactions` | Recent fraud transactions |
-| GET | `/api/v1/suspended-accounts` | Suspended accounts |
-| POST | `/api/v1/blacklist/ip` | Add IP to blacklist |
-| DELETE | `/api/v1/blacklist/ip/{ip}` | Remove IP from blacklist |
-| POST | `/api/v1/behavioral/baseline/{account}` | Update user baseline |
+|---|---|---|
+| `POST` | `/api/v1/detect-ato` | Score a transaction for ATO risk |
+| `POST` | `/api/v1/verify-otp` | Submit OTP verification result |
+| `GET` | `/api/v1/ato-stats` | Live operations statistics |
+| `GET` | `/api/v1/recent-detections` | Last N scored transactions |
+| `GET` | `/api/v1/fraud-transactions` | Confirmed fraud events |
+| `GET` | `/api/v1/suspended-accounts` | Currently suspended accounts |
+| `POST` | `/api/v1/blacklist/ip` | Add IP to blocklist |
+| `DELETE` | `/api/v1/blacklist/ip/{ip}` | Remove IP from blocklist |
+| `GET` | `/api/v1/blacklist/summary` | Blacklist counts |
 
----
-
-## 📈 Benchmarks
-
-| Metric | Target | Expected |
-|--------|--------|----------|
-| Model Accuracy | 98%+ | 98.5% ✅ |
-| ATO Detection Time | <100ms | 85ms ✅ |
-| False Positive Rate | <5% | 2% ✅ |
-| ATO Detection Rate | >95% | 98% ✅ |
-| Behavioral Anomaly Detection | >90% | 93% ✅ |
+Full interactive docs: **http://localhost:8000/docs**
 
 ---
 
 ## 🏗 Architecture
 
-See `docs/architecture.md` for the full system architecture diagram.
+```
+[Transaction] → [Kafka Topic]
+                     ↓
+              [Stream Consumer]
+                     ↓
+          [Behavioral XGBoost Pipeline]
+          (44 features: IP, device,
+           biometrics, velocity, MFA)
+                     ↓
+         ┌──────────┬──────────┐
+         ↓          ↓          ↓
+      ALLOW    OTP_REQUIRED  SUSPEND
+                              ↓
+                    [Blacklist IP/Device/Beneficiary]
+                              ↓
+                    [Admin Dashboard — Real-time feed]
+```
+
+See [`docs/architecture.md`](docs/architecture.md) for the full diagram.
+
+---
+
+## 📁 Dataset Schema
+
+After processing, each record has **44+ columns** including:
+
+- **Network signals**: IP ASN, VPN/proxy flag, IP distance from last login, travel speed
+- **Device signals**: new device flag, foreign IP, distinct accounts per device (24h)
+- **Behavioral biometrics**: mouse velocity, touch radius, typing speed (WPM), keystroke dwell time
+- **Session signals**: page navigation velocity, session length, keep-alive
+- **Auth signals**: failed login attempts, password pasted flag, failed MFA count, MFA type changed
+- **Profile change signals**: profile details changed, time-to-profile-change
+- **Velocity**: tx count (6h / 24h / 4w), failed tx count (1h)
+- **Transaction signals**: amount vs historical avg ratio, new payee added, time-to-payout
+
+Full schema: [`docs/dataset_schema.md`](docs/dataset_schema.md)
+
+---
+
+## 🌐 Online Demo (Hugging Face)
+
+No setup required. Upload any CSV with transaction data at:
+
+👉 **https://huggingface.co/spaces/Burnfir3** *(deploy from `hf_space/` folder)*
+
+The demo uses the pre-trained behavioral pipeline and returns ATO risk scores for each row.
 
 ---
 
