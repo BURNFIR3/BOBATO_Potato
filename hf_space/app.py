@@ -179,12 +179,16 @@ def predict(file_obj):
         bins=[-0.001, 0.499, 0.799, 1.001],
         labels=["LOW", "MEDIUM", "HIGH"],
     ).astype(str)
-    results["recommended_action"] = [_action(p)[0] for p in probs]
+    # Map recommended action based on risk level
+    action_map = {"HIGH": "SUSPEND", "MEDIUM": "OTP REQUIRED", "LOW": "ALLOW"}
+    results["recommended_action"] = results["risk_level"].map(action_map)
+
 
     # Summary stats
-    high = int((results["ato_probability"] >= 0.80).sum())
-    med  = int(((results["ato_probability"] >= 0.50) & (results["ato_probability"] < 0.80)).sum())
-    low  = int((results["ato_probability"] < 0.50).sum())
+    # Summary stats based on risk_level categories
+    high = int((results["risk_level"] == "HIGH").sum())
+    med  = int((results["risk_level"] == "MEDIUM").sum())
+    low  = int((results["risk_level"] == "LOW").sum())
     avg  = float(probs.mean())
 
     summary = f"""
