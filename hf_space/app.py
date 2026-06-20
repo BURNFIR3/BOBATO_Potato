@@ -187,15 +187,27 @@ def predict(file_obj):
     low  = int((results["ato_probability"] < 0.50).sum())
     avg  = float(probs.mean())
 
-    summary = (
-        f"### Scored {len(results):,} transactions  ·  Model: *{model_used}*\n\n"
-        f"| Risk Level | Count | Action |\n"
-        f"|---|---|---|\n"
-        f"| HIGH (≥ 0.80) | **{high}** | SUSPEND |\n"
-        f"| MEDIUM (0.50–0.80) | **{med}** | OTP REQUIRED |\n"
-        f"| LOW (< 0.50) | **{low}** | ALLOW |\n\n"
-        f"**Average ATO probability:** `{avg:.4f}`"
-    )
+    summary_html = f"""
+    <div style="display:flex;gap:15px;margin-bottom:20px;flex-wrap:wrap">
+        <div style="flex:1;min-width:140px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:1rem 1.2rem;transition:transform 0.2s;">
+            <div style="color:#94a3b8;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">Scored Transactions</div>
+            <div style="color:#f1f5f9;font-size:1.6rem;font-weight:700;">{len(results):,}</div>
+            <div style="color:#64748b;font-size:.7rem;margin-top:4px;">Avg Risk: {avg:.3f}</div>
+        </div>
+        <div style="flex:1;min-width:140px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:1rem 1.2rem;border-bottom:3px solid #f87171;">
+            <div style="color:#f87171;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">High Risk (Suspend)</div>
+            <div style="color:#f1f5f9;font-size:1.6rem;font-weight:700;">{high:,}</div>
+        </div>
+        <div style="flex:1;min-width:140px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:1rem 1.2rem;border-bottom:3px solid #facc15;">
+            <div style="color:#facc15;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">Med Risk (OTP)</div>
+            <div style="color:#f1f5f9;font-size:1.6rem;font-weight:700;">{med:,}</div>
+        </div>
+        <div style="flex:1;min-width:140px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:1rem 1.2rem;border-bottom:3px solid #4ade80;">
+            <div style="color:#4ade80;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">Low Risk (Allow)</div>
+            <div style="color:#f1f5f9;font-size:1.6rem;font-weight:700;">{low:,}</div>
+        </div>
+    </div>
+    """
 
     fig = px.histogram(
         results, x="ato_probability", color="recommended_action",
@@ -222,7 +234,7 @@ def predict(file_obj):
     other    = [c for c in results.columns if c not in key_cols + id_cols]
     out = results[id_cols + key_cols + other]
 
-    return out, summary, fig
+    return out, summary_html, fig
 
 
 # ── Gradio UI ──────────────────────────────────────────────────────────────────
@@ -294,12 +306,12 @@ with gr.Blocks(
 
             gr.Markdown("""
             **Supported Feature Schemas:**
-            - Behavioral Model (44 columns): e.g., `typing_speed_wpm`, `failed_login_attempts_session`, `device_fraud_count`
-            - Tabular Model (31 columns): e.g., `velocity_24h`, `credit_risk_score`, `device_distinct_emails_8w`
+            - Behavioral Model (44 columns)
+            - Tabular Model (31 columns)
             """)
 
         with gr.Column(scale=2):
-            summary_out = gr.Markdown(label="Inference Summary")
+            summary_out = gr.HTML(label="Inference Summary")
             chart_out   = gr.Plot(label="Risk Distribution Analysis")
 
     results_out = gr.Dataframe(
