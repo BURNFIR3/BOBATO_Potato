@@ -4,7 +4,7 @@ BOB ATO Detection — Hugging Face Space
 Upload a transaction CSV; the trained behavioral XGBoost pipeline scores
 every row and returns ATO risk levels.
 
-Hosted at: https://huggingface.co/spaces/Burnfir3/bob-ato-detection
+Hosted at: https://huggingface.co/spaces/Burnfir3/PotATO
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ import joblib
 import numpy as np
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import xgboost as xgb
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
@@ -81,11 +82,11 @@ def _load_tabular():
 # ── Decision logic ─────────────────────────────────────────────────────────────
 def _action(prob: float) -> tuple[str, str]:
     if prob >= 0.80:
-        return "🚨 SUSPEND", "#f87171"
+        return "SUSPEND", "#f87171"
     elif prob >= 0.50:
-        return "⚠️ OTP REQUIRED", "#facc15"
+        return "OTP REQUIRED", "#facc15"
     else:
-        return "✅ ALLOW", "#4ade80"
+        return "ALLOW", "#4ade80"
 
 def _detect_model(df: pd.DataFrame) -> str:
     """Return 'behavioral', 'tabular', or 'unknown'."""
@@ -98,17 +99,28 @@ def _detect_model(df: pd.DataFrame) -> str:
     return "unknown"
 
 # ── Core prediction ────────────────────────────────────────────────────────────
-def predict(file_obj) -> tuple:
+def predict(file_obj):
+    empty_df = pd.DataFrame()
+    empty_fig = go.Figure()
+    
     if file_obj is None:
-        return None, "⚠️ Please upload a CSV file.", None
+        return empty_df, "Please upload a CSV file.", empty_fig
 
     try:
-        df = pd.read_csv(file_obj.name)
+        # Gradio 5.x handles files differently depending on exact versions.
+        # It might be a string, a dict, or an object with a .name attribute.
+        filepath = getattr(file_obj, "name", file_obj)
+        if isinstance(filepath, dict):
+            filepath = filepath.get("path", "")
+        elif isinstance(filepath, list) and len(filepath) > 0:
+            filepath = filepath[0]
+            
+        df = pd.read_csv(filepath)
     except Exception as e:
-        return None, f"❌ Could not read CSV: {e}", None
+        return empty_df, f"Could not read CSV: {e}", empty_fig
 
     if df.empty:
-        return None, "❌ The uploaded file is empty.", None
+        return empty_df, "The uploaded file is empty.", empty_fig
 
     model_type = _detect_model(df)
 
@@ -116,7 +128,12 @@ def predict(file_obj) -> tuple:
         if model_type == "behavioral":
             pipeline = _load_behavioral()
             if pipeline is None:
-                return None, "❌ Behavioral model file not found in Space.", None
+                return empty_df, "Behavioral model file not found in Space.", empty_fig
+            
+            # The saved bundle is a dict containing {"pipeline": model, "feature_cols": [...]}
+            if isinstance(pipeline, dict) and "pipeline" in pipeline:
+                pipeline = pipeline["pipeline"]
+                
             feature_cols = [c for c in BEHAVIORAL_FEATURES if c in df.columns]
             X = df[feature_cols].copy()
             # Fill missing features with 0
@@ -131,7 +148,7 @@ def predict(file_obj) -> tuple:
         elif model_type == "tabular":
             model = _load_tabular()
             if model is None:
-                return None, "❌ Tabular model file not found in Space.", None
+                return empty_df, "Tabular model file not found in Space.", empty_fig
             feature_cols = [c for c in TABULAR_FEATURES if c in df.columns]
             X = df[feature_cols].copy()
             for col in TABULAR_FEATURES:
@@ -143,16 +160,16 @@ def predict(file_obj) -> tuple:
             model_used = "Tabular XGBoost (31 features)"
 
         else:
-            return None, (
-                "❌ Could not identify enough matching columns.\n\n"
+            return empty_df, (
+                "Could not identify enough matching columns.\n\n"
                 "The model needs at least **10** behavioral feature columns "
                 "(e.g. `typing_speed_wpm`, `failed_login_attempts_session`) "
                 "or **8** tabular feature columns (e.g. `velocity_24h`, `device_fraud_count`).\n\n"
                 "Download a sample CSV from the repo to see the expected format."
-            ), None
+            ), empty_fig
 
     except Exception:
-        return None, f"❌ Prediction failed:\n```\n{traceback.format_exc()}\n```", None
+        return empty_df, f"Prediction failed:\n```\n{traceback.format_exc()}\n```", empty_fig
 
     # Build results dataframe
     results = df.copy()
@@ -171,23 +188,22 @@ def predict(file_obj) -> tuple:
     avg  = float(probs.mean())
 
     summary = (
-        f"### ✅ Scored {len(results):,} transactions  ·  Model: *{model_used}*\n\n"
+        f"### Scored {len(results):,} transactions  ·  Model: *{model_used}*\n\n"
         f"| Risk Level | Count | Action |\n"
         f"|---|---|---|\n"
-        f"| 🚨 HIGH (≥ 0.80) | **{high}** | SUSPEND |\n"
-        f"| ⚠️ MEDIUM (0.50–0.80) | **{med}** | OTP REQUIRED |\n"
-        f"| ✅ LOW (< 0.50) | **{low}** | ALLOW |\n\n"
+        f"| HIGH (≥ 0.80) | **{high}** | SUSPEND |\n"
+        f"| MEDIUM (0.50–0.80) | **{med}** | OTP REQUIRED |\n"
+        f"| LOW (< 0.50) | **{low}** | ALLOW |\n\n"
         f"**Average ATO probability:** `{avg:.4f}`"
     )
 
-    # Risk distribution chart
     fig = px.histogram(
         results, x="ato_probability", color="recommended_action",
         nbins=40, barmode="overlay",
         color_discrete_map={
-            "🚨 SUSPEND":      "#f87171",
-            "⚠️ OTP REQUIRED": "#facc15",
-            "✅ ALLOW":        "#4ade80",
+            "SUSPEND":      "#f87171",
+            "OTP REQUIRED": "#facc15",
+            "ALLOW":        "#4ade80",
         },
         title="ATO Risk Score Distribution",
         labels={"ato_probability": "ATO Probability", "count": "Transactions"},
@@ -211,36 +227,42 @@ def predict(file_obj) -> tuple:
 
 # ── Gradio UI ──────────────────────────────────────────────────────────────────
 DESCRIPTION = """
-## 🛡️ Bank of Baroda — ATO Detection
+## Bank of Baroda — Account Takeover (ATO) Detection System
 
-Upload a CSV file of transactions or sessions and the trained XGBoost model will score each row for **Account Takeover risk**.
+**Links:** [Hugging Face Space](https://huggingface.co/spaces/Burnfir3/PotATO) | [GitHub Repository](https://github.com/BURNFIR3/BOBATO_Potato)
 
-**No account details or PII are stored.** All processing happens in-memory and is discarded after each request.
+Upload a CSV file containing transaction or session telemetry. The trained XGBoost pipeline will evaluate each record for **Account Takeover risk**.
 
-### What you get back
-- `ato_probability` — model confidence that this is an ATO attempt (0–1)
-- `risk_level` — LOW / MEDIUM / HIGH
-- `recommended_action` — ALLOW / OTP REQUIRED / SUSPEND
+**Privacy & Security:** No account details or personally identifiable information (PII) are persisted. All data processing occurs strictly in-memory and is immediately discarded post-inference.
+
+### Evaluation Outputs
+- `ato_probability` — Model confidence score indicating an ATO attempt (0.0 to 1.0)
+- `risk_level` — Categorized risk severity (LOW / MEDIUM / HIGH)
+- `recommended_action` — Automated operational directive (ALLOW / OTP REQUIRED / SUSPEND)
 """
 
 ARTICLE = """
-### How the model works
+### Model Architecture & Methodology
 
-The **behavioral pipeline** looks at 44 signals: network anomalies (VPN use, IP distance),
-device signals (new device, device fraud history), biometric patterns (typing speed, mouse velocity,
-keystroke timing), session behaviour, MFA failures, velocity metrics, and transaction anomalies.
+The **behavioral pipeline** evaluates 44 distinct signals, including: 
+- Network anomalies (VPN usage, IP distance from historical norms)
+- Device signals (unrecognized device fingerprints, historical device fraud count)
+- Biometric interaction patterns (typing speed, mouse movement velocity, keystroke timing)
+- Session behavior, multi-factor authentication (MFA) failures, and transactional velocity metrics.
 
-Trained on 50,000 labeled sessions with SMOTE balancing. Achieves **AUC-ROC 0.953**,
-**99.1% fraud precision**, and **90.1% fraud recall** on the held-out test set.
+The system was trained on 50,000 labeled sessions utilizing SMOTE for class balancing. It achieves the following performance on the held-out test set:
+- **AUC-ROC:** 0.953
+- **Fraud Precision:** 99.1%
+- **Fraud Recall:** 90.1%
 
-> Built for the Bank of Baroda Fraud Operations team · [GitHub](https://github.com/BURNFIR3/BOBATO_Potato)
+*Developed for the Bank of Baroda Fraud Operations Team by Team POTATO.*
 """
 
 with gr.Blocks(
     title="BOB ATO Detection",
     theme=gr.themes.Base(
         primary_hue=gr.themes.colors.blue,
-        secondary_hue=gr.themes.colors.orange,
+        secondary_hue=gr.themes.colors.slate,
         neutral_hue=gr.themes.colors.slate,
     ).set(
         body_background_fill="#080c14",
@@ -250,7 +272,7 @@ with gr.Blocks(
     ),
     css="""
     .gr-box { border-radius: 12px !important; }
-    .gr-button-primary { background: linear-gradient(135deg, #3b82f6, #8b5cf6) !important; border: none !important; }
+    .gr-button-primary { background: linear-gradient(135deg, #2563eb, #4f46e5) !important; border: none !important; }
     """,
 ) as demo:
 
@@ -259,24 +281,23 @@ with gr.Blocks(
     with gr.Row():
         with gr.Column(scale=1):
             file_input = gr.File(
-                label="📂 Upload Transaction CSV",
+                label="Upload Transaction CSV Data",
                 file_types=[".csv"],
-                type="filepath",
             )
-            run_btn = gr.Button("🔍 Score Transactions", variant="primary", size="lg")
+            run_btn = gr.Button("Score Transactions", variant="primary", size="lg")
 
             gr.Markdown("""
-            **Supported feature sets:**
-            - Behavioral (44 cols): `typing_speed_wpm`, `failed_login_attempts_session`, `device_fraud_count`, …
-            - Tabular (31 cols): `velocity_24h`, `credit_risk_score`, `device_distinct_emails_8w`, …
+            **Supported Feature Schemas:**
+            - Behavioral Model (44 columns): e.g., `typing_speed_wpm`, `failed_login_attempts_session`, `device_fraud_count`
+            - Tabular Model (31 columns): e.g., `velocity_24h`, `credit_risk_score`, `device_distinct_emails_8w`
             """)
 
         with gr.Column(scale=2):
-            summary_out = gr.Markdown(label="Summary")
-            chart_out   = gr.Plot(label="Risk Distribution")
+            summary_out = gr.Markdown(label="Inference Summary")
+            chart_out   = gr.Plot(label="Risk Distribution Analysis")
 
     results_out = gr.Dataframe(
-        label="Scored Transactions",
+        label="Scored Transaction Results",
         interactive=False,
         wrap=False,
     )

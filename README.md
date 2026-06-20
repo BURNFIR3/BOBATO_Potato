@@ -204,7 +204,7 @@ Full schema: [`docs/dataset_schema.md`](docs/dataset_schema.md)
 
 No setup required. Upload any CSV with transaction data at:
 
-👉 **https://huggingface.co/spaces/Burnfir3** *(deploy from `hf_space/` folder)*
+👉 **https://huggingface.co/spaces/Burnfir3/PotATO** *(deploy from `hf_space/` folder)*
 
 The demo uses the pre-trained behavioral pipeline and returns ATO risk scores for each row.
 
