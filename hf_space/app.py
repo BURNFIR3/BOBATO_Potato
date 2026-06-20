@@ -104,7 +104,7 @@ def predict(file_obj):
     empty_fig = go.Figure()
     
     if file_obj is None:
-        return empty_df, "Please upload a CSV file.", empty_fig
+        return empty_df, "<div style='color:#facc15'>Please upload a CSV file.</div>", empty_fig
 
     try:
         # Gradio 5.x handles files differently depending on exact versions.
@@ -117,10 +117,10 @@ def predict(file_obj):
             
         df = pd.read_csv(filepath)
     except Exception as e:
-        return empty_df, f"Could not read CSV: {e}", empty_fig
+        return empty_df, f"<div style='color:#f87171'>Could not read CSV: {e}</div>", empty_fig
 
     if df.empty:
-        return empty_df, "The uploaded file is empty.", empty_fig
+        return empty_df, "<div style='color:#facc15'>The uploaded file is empty.</div>", empty_fig
 
     model_type = _detect_model(df)
 
@@ -128,7 +128,7 @@ def predict(file_obj):
         if model_type == "behavioral":
             pipeline = _load_behavioral()
             if pipeline is None:
-                return empty_df, "Behavioral model file not found in Space.", empty_fig
+                return empty_df, "<div style='color:#f87171'>Behavioral model file not found in Space.</div>", empty_fig
             
             # The saved bundle is a dict containing {"pipeline": model, "feature_cols": [...]}
             if isinstance(pipeline, dict) and "pipeline" in pipeline:
@@ -148,7 +148,7 @@ def predict(file_obj):
         elif model_type == "tabular":
             model = _load_tabular()
             if model is None:
-                return empty_df, "Tabular model file not found in Space.", empty_fig
+                return empty_df, "<div style='color:#f87171'>Tabular model file not found in Space.</div>", empty_fig
             feature_cols = [c for c in TABULAR_FEATURES if c in df.columns]
             X = df[feature_cols].copy()
             for col in TABULAR_FEATURES:
@@ -161,15 +161,15 @@ def predict(file_obj):
 
         else:
             return empty_df, (
-                "Could not identify enough matching columns.\n\n"
-                "The model needs at least **10** behavioral feature columns "
-                "(e.g. `typing_speed_wpm`, `failed_login_attempts_session`) "
-                "or **8** tabular feature columns (e.g. `velocity_24h`, `device_fraud_count`).\n\n"
-                "Download a sample CSV from the repo to see the expected format."
+                "<div style='color:#f87171'>Could not identify enough matching columns.<br><br>"
+                "The model needs at least <strong>10</strong> behavioral feature columns "
+                "(e.g. <code>typing_speed_wpm</code>, <code>failed_login_attempts_session</code>) "
+                "or <strong>8</strong> tabular feature columns (e.g. <code>velocity_24h</code>, <code>device_fraud_count</code>).<br><br>"
+                "Download a sample CSV from the repo to see the expected format.</div>"
             ), empty_fig
 
     except Exception:
-        return empty_df, f"Prediction failed:\n```\n{traceback.format_exc()}\n```", empty_fig
+        return empty_df, f"<div style='color:#f87171'>Prediction failed:<br><pre>{traceback.format_exc()}</pre></div>", empty_fig
 
     # Build results dataframe
     results = df.copy()
@@ -187,25 +187,31 @@ def predict(file_obj):
     low  = int((results["ato_probability"] < 0.50).sum())
     avg  = float(probs.mean())
 
-    summary_html = f"""
-    <div style="display:flex;gap:15px;margin-bottom:20px;flex-wrap:wrap">
-        <div style="flex:1;min-width:140px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:1rem 1.2rem;transition:transform 0.2s;">
-            <div style="color:#94a3b8;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">Scored Transactions</div>
-            <div style="color:#f1f5f9;font-size:1.6rem;font-weight:700;">{len(results):,}</div>
-            <div style="color:#64748b;font-size:.7rem;margin-top:4px;">Avg Risk: {avg:.3f}</div>
-        </div>
-        <div style="flex:1;min-width:140px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:1rem 1.2rem;border-bottom:3px solid #f87171;">
-            <div style="color:#f87171;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">High Risk (Suspend)</div>
-            <div style="color:#f1f5f9;font-size:1.6rem;font-weight:700;">{high:,}</div>
-        </div>
-        <div style="flex:1;min-width:140px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:1rem 1.2rem;border-bottom:3px solid #facc15;">
-            <div style="color:#facc15;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">Med Risk (OTP)</div>
-            <div style="color:#f1f5f9;font-size:1.6rem;font-weight:700;">{med:,}</div>
-        </div>
-        <div style="flex:1;min-width:140px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:1rem 1.2rem;border-bottom:3px solid #4ade80;">
-            <div style="color:#4ade80;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">Low Risk (Allow)</div>
-            <div style="color:#f1f5f9;font-size:1.6rem;font-weight:700;">{low:,}</div>
-        </div>
+    summary = f"""
+    <div style="margin-bottom:1rem;color:#94a3b8;font-size:0.9rem">Model Used: <strong style="color:#f1f5f9">{model_used}</strong></div>
+    <div style="display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap">
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:1.2rem;flex:1;min-width:140px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)">
+        <div style="color:#94a3b8;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.5rem">Transactions Scored</div>
+        <div style="color:#f1f5f9;font-size:1.8rem;font-weight:700">{len(results):,}</div>
+      </div>
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:1.2rem;flex:1;min-width:140px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)">
+        <div style="color:#94a3b8;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.5rem">Avg ATO Probability</div>
+        <div style="color:#f1f5f9;font-size:1.8rem;font-weight:700">{avg:.4f}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:1rem;flex-wrap:wrap">
+      <div style="background:rgba(248,113,113,.05);border:1px solid rgba(248,113,113,.2);border-radius:14px;padding:1.2rem;flex:1;min-width:120px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)">
+        <div style="color:#fca5a5;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.5rem">High Risk (Suspend)</div>
+        <div style="color:#f87171;font-size:1.6rem;font-weight:700">{high:,}</div>
+      </div>
+      <div style="background:rgba(250,204,21,.05);border:1px solid rgba(250,204,21,.2);border-radius:14px;padding:1.2rem;flex:1;min-width:120px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)">
+        <div style="color:#fde047;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.5rem">Med Risk (OTP)</div>
+        <div style="color:#facc15;font-size:1.6rem;font-weight:700">{med:,}</div>
+      </div>
+      <div style="background:rgba(74,222,128,.05);border:1px solid rgba(74,222,128,.2);border-radius:14px;padding:1.2rem;flex:1;min-width:120px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)">
+        <div style="color:#86efac;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.5rem">Low Risk (Allow)</div>
+        <div style="color:#4ade80;font-size:1.6rem;font-weight:700">{low:,}</div>
+      </div>
     </div>
     """
 
@@ -234,7 +240,7 @@ def predict(file_obj):
     other    = [c for c in results.columns if c not in key_cols + id_cols]
     out = results[id_cols + key_cols + other]
 
-    return out, summary_html, fig
+    return out, summary, fig
 
 
 # ── Gradio UI ──────────────────────────────────────────────────────────────────
@@ -306,12 +312,13 @@ with gr.Blocks(
 
             gr.Markdown("""
             **Supported Feature Schemas:**
-            - Behavioral Model (44 columns)
-            - Tabular Model (31 columns)
+            - Behavioral Model (44 columns): e.g., `typing_speed_wpm`, `failed_login_attempts_session`, `device_fraud_count`
+            - Tabular Model (31 columns): e.g., `velocity_24h`, `credit_risk_score`, `device_distinct_emails_8w`
             """)
 
         with gr.Column(scale=2):
-            summary_out = gr.HTML(label="Inference Summary")
+            gr.Markdown("### Inference Summary")
+            summary_out = gr.HTML()
             chart_out   = gr.Plot(label="Risk Distribution Analysis")
 
     results_out = gr.Dataframe(
