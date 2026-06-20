@@ -178,7 +178,7 @@ def predict(file_obj):
         results["ato_probability"],
         bins=[-0.001, 0.499, 0.799, 1.001],
         labels=["LOW", "MEDIUM", "HIGH"],
-    )
+    ).astype(str)
     results["recommended_action"] = [_action(p)[0] for p in probs]
 
     # Summary stats
@@ -227,8 +227,6 @@ def predict(file_obj):
 
 # ── Gradio UI ──────────────────────────────────────────────────────────────────
 DESCRIPTION = """
-## Bank of Baroda — Account Takeover (ATO) Detection System
-
 **Links:** [Hugging Face Space](https://huggingface.co/spaces/Burnfir3/PotATO) | [GitHub Repository](https://github.com/BURNFIR3/BOBATO_Potato)
 
 Upload a CSV file containing transaction or session telemetry. The trained XGBoost pipeline will evaluate each record for **Account Takeover risk**.
@@ -259,7 +257,7 @@ The system was trained on 50,000 labeled sessions utilizing SMOTE for class bala
 """
 
 with gr.Blocks(
-    title="BOB ATO Detection",
+    title="BOB ATO Shield",
     theme=gr.themes.Base(
         primary_hue=gr.themes.colors.blue,
         secondary_hue=gr.themes.colors.slate,
@@ -275,7 +273,15 @@ with gr.Blocks(
     .gr-button-primary { background: linear-gradient(135deg, #2563eb, #4f46e5) !important; border: none !important; }
     """,
 ) as demo:
-
+    gr.HTML("""
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;padding:1.4rem 1rem 0.9rem;border-bottom:1px solid rgba(255,255,255,0.06)">
+      <div style="width:48px;height:48px;background:linear-gradient(135deg,#f97316,#ea580c);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:800;color:white;box-shadow:0 4px 14px rgba(249,115,22,.3);flex-shrink:0">B</div>
+      <div>
+        <div style="font-size:1.4rem;font-weight:700;color:#f1f5f9;line-height:1.2">BOB ATO Shield</div>
+        <div style="font-size:0.9rem;color:#64748b">Bank of Baroda · Real-time Account Takeover Protection</div>
+      </div>
+    </div>
+    """)
     gr.Markdown(DESCRIPTION)
 
     with gr.Row():
