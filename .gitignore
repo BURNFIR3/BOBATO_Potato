@@ -1,0 +1,42 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Env
+.env
+*.env
+
+# Logs
+logs/*.log
+
+# Model artifacts (large binaries)
+# models/*.json  # Keep model files
+
+# Data (large files)
+data/ato_dataset_with_smote.csv
+data/ato_dataset_processed.csv
+raw_data/*.csv
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/

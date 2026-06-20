@@ -1,0 +1,109 @@
+{
+  "dataset_path": "C:\\Users\\huzef\\Downloads\\BOB\\ato_detection\\raw_data\\ato_behavioral_dataset.csv",
+  "raw_rows": 50000,
+  "raw_fraud_rate": 0.0884,
+  "feature_count": 44,
+  "features_used": [
+    "ip_address_asn",
+    "is_known_vpn_or_proxy",
+    "ip_distance_from_last_login_km",
+    "speed_of_travel_kmh",
+    "is_new_device_uid",
+    "is_foreign_ip",
+    "country_mismatch_with_profile",
+    "distinct_ip_zip_count_1w_4w",
+    "login_hour_of_day_local",
+    "login_hour_anomaly_score",
+    "mouse_movement_velocity",
+    "touch_event_radius",
+    "typing_speed_wpm",
+    "keystroke_dwell_time",
+    "failed_login_attempts_session",
+    "password_pasted",
+    "page_navigation_velocity",
+    "session_length_in_minutes",
+    "keep_alive_session",
+    "device_distinct_emails_8w",
+    "device_distinct_accounts_attempted_24h",
+    "device_fraud_count",
+    "customer_age",
+    "account_age_months",
+    "days_since_last_login",
+    "days_since_password_reset",
+    "email_is_free",
+    "name_email_similarity",
+    "phone_home_valid",
+    "phone_mobile_valid",
+    "failed_mfa_attempts_count",
+    "mfa_type_changed",
+    "profile_details_changed_flag",
+    "time_to_profile_change_seconds",
+    "velocity_6h",
+    "velocity_24h",
+    "velocity_4w",
+    "failed_tx_count_1h",
+    "tx_amount_vs_historical_avg_ratio",
+    "new_payee_added",
+    "time_from_payee_addition_to_payout_minutes",
+    "sequential_failed_promocode_attempts",
+    "saved_payment_methods_count",
+    "month"
+  ],
+  "test_size": 0.2,
+  "train_rows_before_smote": 40000,
+  "train_rows_after_smote": 72932,
+  "test_rows": 10000,
+  "train_distribution_after_smote": {
+    "real": 36466,
+    "fraud": 36466,
+    "fraud_rate": 0.5
+  },
+  "accuracy": 0.9905,
+  "auc_roc": 0.953,
+  "f1_score": 0.9437,
+  "precision_fraud": 0.9913,
+  "recall_fraud": 0.9005,
+  "false_positive_rate": 0.0008,
+  "true_positive_rate": 0.9005,
+  "confusion_matrix": [
+    [
+      9109,
+      7
+    ],
+    [
+      88,
+      796
+    ]
+  ],
+  "classification_report": {
+    "0": {
+      "precision": 0.9904316624986409,
+      "recall": 0.9992321193505924,
+      "f1-score": 0.9948124283296019,
+      "support": 9116.0
+    },
+    "1": {
+      "precision": 0.9912826899128269,
+      "recall": 0.9004524886877828,
+      "f1-score": 0.943687018375815,
+      "support": 884.0
+    },
+    "accuracy": 0.9905,
+    "macro avg": {
+      "precision": 0.9908571762057339,
+      "recall": 0.9498423040191877,
+      "f1-score": 0.9692497233527084,
+      "support": 10000.0
+    },
+    "weighted avg": {
+      "precision": 0.9905068933220549,
+      "recall": 0.9905,
+      "f1-score": 0.9902929420896871,
+      "support": 10000.0
+    }
+  },
+  "balanced_train_csv": "C:\\Users\\huzef\\Downloads\\BOB\\ato_detection\\data\\ato_behavioral_train_smote_50_50.csv",
+  "holdout_test_csv": "C:\\Users\\huzef\\Downloads\\BOB\\ato_detection\\data\\ato_behavioral_test_holdout.csv",
+  "model_path": "C:\\Users\\huzef\\Downloads\\BOB\\ato_detection\\models\\ato_behavioral_xgboost_benchmark.json",
+  "live_pipeline_path": "C:\\Users\\huzef\\Downloads\\BOB\\ato_detection\\models\\ato_behavioral_live_pipeline.joblib"
+}
