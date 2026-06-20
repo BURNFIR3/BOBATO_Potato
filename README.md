@@ -1,34 +1,34 @@
-# 🛡️ Bank of Baroda — ATO Detection & Admin Operations Platform
+# Bank of Baroda — Account Takeover (ATO) Detection & Admin Operations Platform
 
-A **production-grade, real-time Account Takeover (ATO) detection system** built for Bank of Baroda fraud operations teams. The platform monitors live transactions, scores them with a trained XGBoost behavioral model, and surfaces decisions to analysts through an admin dashboard — enabling instant intervention on suspicious accounts.
+A production-grade, real-time Account Takeover (ATO) detection system developed for Bank of Baroda fraud operations teams. The platform monitors transactions, scores them using a trained XGBoost behavioral model, and surfaces decisions to analysts through an administrative dashboard, enabling immediate intervention on suspicious accounts.
 
-> **Try it online →** Upload a transaction CSV on the [Hugging Face Space](https://huggingface.co/spaces/Burnfir3) to see ATO predictions without any setup.
+> **Online Deployment:** Access the live prediction environment via [Hugging Face Space](https://huggingface.co/spaces/Burnfir3/PotATO).
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 ato_detection/
-├── raw_data/          ← Drop your raw CSV datasets here
-├── data/              ← Processed datasets & blacklists
-├── models/            ← Trained XGBoost model & pipelines
-├── src/               ← Core detection & ML pipeline
+├── raw_data/          ← Input directory for raw CSV datasets
+├── data/              ← Processed datasets and blacklists
+├── models/            ← Trained XGBoost models and pipelines
+├── src/               ← Core detection and ML pipeline logic
 ├── api/               ← FastAPI REST endpoints (port 8000)
-├── dashboard/         ← Streamlit admin dashboard (port 8501)
+├── dashboard/         ← Streamlit administrative dashboard (port 8501)
 ├── streaming/         ← Kafka/Redis real-time infrastructure
-├── scripts/           ← One-click runner scripts
-├── tests/             ← Pytest test suite
-├── logs/              ← Auto-generated log files
-├── docs/              ← Architecture & API documentation
-└── hf_space/          ← Hugging Face Space (Gradio demo)
+├── scripts/           ← Execution and operational scripts
+├── tests/             ← Pytest verification suite
+├── logs/              ← Automated system logs
+├── docs/              ← Architecture and API documentation
+└── hf_space/          ← Hugging Face Space deployment repository
 ```
 
 ---
 
-## 🚀 How to Run — Step by Step
+## Operational Instructions
 
-> **Prerequisites:** Python 3.10+, Git. Kafka/Redis are optional (needed only for live streaming).
+> **Prerequisites:** Python 3.10+, Git. Kafka/Redis are required only for live streaming components.
 
 ### Step 1 — Clone & Install
 
@@ -44,16 +44,16 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### Step 2 — Add Your Dataset
+### Step 2 — Dataset Ingestion
 
-Place your raw transaction CSV in the `raw_data/` folder:
+Place the raw transaction CSV in the `raw_data/` directory:
 
 ```
 raw_data/
-└── your_transactions.csv    ← drop here
+└── your_transactions.csv
 ```
 
-> If `raw_data/` is empty the system auto-generates 5,000 synthetic records so you can still see the pipeline work.
+> If `raw_data/` is empty, the system automatically generates synthetic records for demonstration purposes.
 
 ### Step 3 — Process & Train
 
@@ -61,7 +61,7 @@ raw_data/
 # Process raw data → data/ato_dataset_processed.csv
 python scripts/process_dataset.py
 
-# Train the XGBoost model (~2–5 min)
+# Train the XGBoost model
 python scripts/train_model.py
 ```
 
@@ -73,7 +73,7 @@ python scripts/start_api.py
 # → Interactive docs at http://localhost:8000/docs
 ```
 
-### Step 5 — Start the Admin Dashboard (Terminal 2)
+### Step 5 — Start the Administrative Dashboard (Terminal 2)
 
 ```powershell
 .venv\Scripts\python.exe -m streamlit run dashboard/app.py
@@ -82,84 +82,84 @@ python scripts/start_api.py
 
 ### Step 6 — (Optional) Live Streaming with Kafka
 
-Requires Docker for Kafka + Redis:
+Requires Docker for Kafka and Redis configurations:
 
 ```powershell
-# Terminal 0 — start Kafka + Redis
+# Terminal 0 — Initialize Kafka and Redis
 docker-compose up -d
 
-# Terminal 3 — start Kafka consumer
+# Terminal 3 — Initialize Kafka consumer
 python scripts/start_stream.py
 
-# Terminal 4 — produce 500 live transactions
+# Terminal 4 — Produce live transactions
 python scripts/start_live_demo.py --delay 0.25 --limit 500
 ```
 
 ---
 
-## 🎯 How Decisions Are Made
+## Decision Logic
 
-Every incoming transaction is scored by the behavioral XGBoost pipeline and assigned an ATO probability. The admin dashboard shows the resulting action in real time:
+Incoming transactions are scored by the behavioral XGBoost pipeline and assigned an ATO probability. The administrative dashboard reflects the resulting action in real time:
 
 | ATO Probability | Behavioral Signal | Action |
 |---|---|---|
-| < 0.50 | Low anomaly | ✅ **ALLOW** — transaction proceeds |
-| 0.50 – 0.80 | Moderate anomaly | ⚠️ **OTP REQUIRED** — step-up auth triggered |
-| > 0.80 | High anomaly | 🚨 **SUSPEND** — account frozen, OTP verify |
+| < 0.50 | Low anomaly | **ALLOW** — transaction proceeds |
+| 0.50 – 0.80 | Moderate anomaly | **OTP REQUIRED** — step-up authentication triggered |
+| > 0.80 | High anomaly | **SUSPEND** — account frozen, pending verification |
 
-When fraud is confirmed, three blacklists are automatically updated:
-- **IP address** of the session
-- **Device fingerprint** used
+Confirmed fraud automatically updates three primary blacklists:
+- **IP address** of the associated session
+- **Device fingerprint** identifier
 - **Beneficiary account** targeted
 
 ---
 
-## 📊 Model Performance (Actual Results — June 2026)
+## Model Performance
 
 ### Behavioral Model — Session & Biometric Features
-*Trained on 50,000 labeled sessions with 44 behavioral features*
+*Trained on 50,000 labeled sessions leveraging 44 behavioral features*
 
 | Metric | Result |
 |---|---|
 | AUC-ROC | **0.953** |
-| Fraud Precision | **99.1%** — when flagged, almost always real fraud |
-| Fraud Recall | **90.1%** — catches 9 in 10 actual ATO attempts |
-| False Positive Rate | **0.08%** — legitimate users almost never blocked |
-| Test Set | 10,000 sessions (20% holdout, unseen during training) |
+| Fraud Precision | **99.1%** |
+| Fraud Recall | **90.1%** |
+| False Positive Rate | **0.08%** |
+| Test Set | 10,000 sessions (20% holdout distribution) |
 
 ### Tabular Model — Transaction & Account Features
-*Trained on 1,055,000 real bank transactions, 1.5% fraud base rate*
+*Trained on 1,055,000 transactions utilizing a 1.5% fraud base rate*
 
 | Metric | Result |
 |---|---|
 | AUC-ROC | **0.913** |
-| Fraud Recall | **73.4%** — catches ~3 in 4 fraud cases |
-| False Positive Rate | **9.3%** — conservative, errs on side of caution |
-| Test Set | 211,000 transactions (20% holdout) |
+| Fraud Recall | **73.4%** |
+| False Positive Rate | **9.3%** |
+| Test Set | 211,000 transactions (20% holdout distribution) |
 
-> The behavioral model is the **primary scoring engine**. The tabular model is used as a fallback when behavioral signals (mouse/keystroke/touch data) are unavailable.
+> The behavioral model operates as the primary scoring engine. The tabular model functions as a strict fallback mechanism when behavioral signals (mouse/keystroke/touch data) are unavailable.
 
 ---
 
-## 🔧 API Endpoints
+## API Endpoints
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/api/v1/detect-ato` | Score a transaction for ATO risk |
+| `POST` | `/api/v1/detect-ato` | Evaluate transaction for ATO risk |
 | `POST` | `/api/v1/verify-otp` | Submit OTP verification result |
-| `GET` | `/api/v1/ato-stats` | Live operations statistics |
-| `GET` | `/api/v1/recent-detections` | Last N scored transactions |
-| `GET` | `/api/v1/fraud-transactions` | Confirmed fraud events |
-| `GET` | `/api/v1/suspended-accounts` | Currently suspended accounts |
-| `POST` | `/api/v1/blacklist/ip` | Add IP to blocklist |
-| `DELETE` | `/api/v1/blacklist/ip/{ip}` | Remove IP from blocklist |
-| `GET` | `/api/v1/blacklist/summary` | Blacklist counts |
+| `GET` | `/api/v1/ato-stats` | Retrieve operations statistics |
+| `GET` | `/api/v1/recent-detections` | Retrieve recent transaction scores |
+| `GET` | `/api/v1/fraud-transactions` | Retrieve confirmed fraud events |
+| `GET` | `/api/v1/suspended-accounts` | Retrieve suspended accounts list |
+| `POST` | `/api/v1/blacklist/ip` | Add IP address to blocklist |
+| `DELETE` | `/api/v1/blacklist/ip/{ip}` | Remove IP address from blocklist |
+| `GET` | `/api/v1/blacklist/summary` | Retrieve blacklist metric counts |
 
-Full interactive docs: **http://localhost:8000/docs**
+Full interactive documentation is available at: **http://localhost:8000/docs**
 
 ---
 
-## 🏗 Architecture
+## Architecture
 
 ```
 [Transaction] → [Kafka Topic]
@@ -176,40 +176,38 @@ Full interactive docs: **http://localhost:8000/docs**
                               ↓
                     [Blacklist IP/Device/Beneficiary]
                               ↓
-                    [Admin Dashboard — Real-time feed]
+                    [Administrative Dashboard]
 ```
 
-See [`docs/architecture.md`](docs/architecture.md) for the full diagram.
+Please refer to [`docs/architecture.md`](docs/architecture.md) for comprehensive architectural details.
 
 ---
 
-## 📁 Dataset Schema
+## Dataset Schema
 
-After processing, each record has **44+ columns** including:
+Processed records utilize a schema of 44+ columns, including:
 
-- **Network signals**: IP ASN, VPN/proxy flag, IP distance from last login, travel speed
-- **Device signals**: new device flag, foreign IP, distinct accounts per device (24h)
+- **Network signals**: IP ASN, VPN/proxy flags, IP distance, travel speed
+- **Device signals**: device novelty, foreign IP presence, distinct accounts per device
 - **Behavioral biometrics**: mouse velocity, touch radius, typing speed (WPM), keystroke dwell time
-- **Session signals**: page navigation velocity, session length, keep-alive
-- **Auth signals**: failed login attempts, password pasted flag, failed MFA count, MFA type changed
-- **Profile change signals**: profile details changed, time-to-profile-change
-- **Velocity**: tx count (6h / 24h / 4w), failed tx count (1h)
-- **Transaction signals**: amount vs historical avg ratio, new payee added, time-to-payout
+- **Session signals**: navigation velocity, session duration, keep-alive monitoring
+- **Authentication signals**: failed login attempts, pasted password flags, failed MFA counts, MFA configuration changes
+- **Profile signals**: profile alterations, time-to-profile-change
+- **Velocity metrics**: transaction frequencies across 6h, 24h, and 4w intervals
+- **Transaction signals**: transaction value ratios, new payee additions, time-to-payout execution
 
-Full schema: [`docs/dataset_schema.md`](docs/dataset_schema.md)
-
----
-
-## 🌐 Online Demo (Hugging Face)
-
-No setup required. Upload any CSV with transaction data at:
-
-👉 **https://huggingface.co/spaces/Burnfir3/PotATO** *(deploy from `hf_space/` folder)*
-
-The demo uses the pre-trained behavioral pipeline and returns ATO risk scores for each row.
+The complete schema documentation is available at: [`docs/dataset_schema.md`](docs/dataset_schema.md)
 
 ---
 
-## 📄 License
+## Online Environment Deployment
+
+**Access URL:** https://huggingface.co/spaces/Burnfir3/PotATO
+
+The deployment utilizes the pre-trained behavioral pipeline to return ATO risk severity evaluations.
+
+---
+
+## License
 
 Bank of Baroda Internal Use Only. All rights reserved.

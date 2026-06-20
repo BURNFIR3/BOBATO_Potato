@@ -1,28 +1,26 @@
 ---
 title: BOB ATO Detection
-emoji: 🛡️
 colorFrom: blue
-colorTo: yellow
+colorTo: gray
 sdk: gradio
 sdk_version: "5.9.1"
 python_version: "3.11"
 app_file: app.py
 pinned: false
-short_description: Upload a transaction CSV to get real-time ATO risk scores
+short_description: Account Takeover (ATO) Detection System
 ---
 
-# 🛡️ Bank of Baroda — ATO Detection Demo
+# Bank of Baroda — Account Takeover (ATO) Detection System
 
-Upload a CSV file of bank transactions and the trained XGBoost behavioral model will score each row for **Account Takeover (ATO) risk**, returning a recommended action for each transaction.
+Upload a CSV file containing transaction data. The trained XGBoost behavioral pipeline evaluates each record for **Account Takeover (ATO) risk**, determining the appropriate automated response for the transaction.
 
-## How it works
+## System Workflow
 
-1. Upload a CSV with transaction/session features
-2. The model auto-detects available features and selects the best pipeline
-3. Each row is scored and assigned a risk level: `ALLOW`, `OTP_REQUIRED`, or `SUSPEND`
+1. Data Ingestion: Upload a CSV containing transaction or session features.
+2. Automated Feature Extraction: The system detects available features and selects the optimal processing pipeline.
+3. Risk Assessment: Each record is scored and assigned a categorized action: `ALLOW`, `OTP_REQUIRED`, or `SUSPEND`.
 
-## Sample columns the model uses
+## Processed Telemetry Signals
 
-`ip_address_asn`, `is_known_vpn_or_proxy`, `typing_speed_wpm`, `failed_login_attempts_session`, `device_fraud_count`, `velocity_24h`, `new_payee_added`, and 37 more behavioral signals.
-
-Download a sample CSV from the repo to try it out.
+The model leverages over 44 behavioral signals, including:
+`ip_address_asn`, `is_known_vpn_or_proxy`, `typing_speed_wpm`, `failed_login_attempts_session`, `device_fraud_count`, `velocity_24h`, and `new_payee_added`.
