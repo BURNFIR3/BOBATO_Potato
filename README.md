@@ -208,6 +208,12 @@ The deployment utilizes the pre-trained behavioral pipeline to return ATO risk s
 
 ---
 
+## Note
+
+Some features of the dataset have been synthetically generated to include more behavioural features which are not freely available on the internet. The script can be found at ato_detection\src\behavioral_dataset_generator.py
+
+---
+
 ## License
 
 Bank of Baroda Internal Use Only. All rights reserved.
